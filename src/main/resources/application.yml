@@ -1,0 +1,76 @@
+server:
+  port: 8083
+
+spring:
+  kafka:
+    # producer 配置
+    producer:
+      # 常见的键序列化器包括：
+      # org.apache.kafka.common.serialization.StringSerializer：将键对象作为字符串进行序列化。
+      # org.apache.kafka.common.serialization.IntegerSerializer：将键对象作为整数进行序列化。
+      # org.apache.kafka.common.serialization.ByteArraySerializer：将键对象直接作为字节数组进行序列化。
+      # 生产者数据key序列化
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # 生产者数据value序列化
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # acks：生产者发送消息的确认模式。可选的值有 “0”（不需要任何确认）、“1”（只需要 Leader 确认）和 “all”（需要 Leader 和所有副本确认）
+      # retries：配置生产者在发生错误时的重试次数。
+      # retry-backoff-ms：配置重试之间的延迟时间（默认为 100 毫秒）。重试的间隔时间会随着重试次数的增加而指数级增长，以避免过度负载和大量的重复请求。
+      # batch-size：配置每个批次中包含的消息大小。当应用程序使用 Kafka 生产者发送消息时，发送单个消息可能会带来一些性能开销。为了减少这种开销，可以将多个消息进行批量发送。spring.kafka.producer.batch-size 参数就是用来指定每个批次中包含的消息大小。
+      # buffer-memory：用于配置 Kafka 生产者的缓冲区内存大小的属性，Kafka 生产者在发送消息时，不会立即将消息发送到服务器，而是先将消息缓存在生产者的缓冲区中。当缓冲区中的消息达到一定大小或达到一定时间限制时，生产者才会批量地将消息发送到 Kafka 服务器。该参数的单位是字节，默认值是 33554432 字节（32MB）。
+      # client-id：配置生产者的客户端 ID，如果你没有显式地设置该属性，则 Kafka 生产者会自动生成一个随机的客户端 ID。使用自定义的客户端 ID 可以帮助你更好地追踪和监控不同的生产者实例
+
+      # 在消息系统中，幂等性是指多次执行同一个操作所产生的影响与执行一次操作的影响相同。而在 Kafka 中，启用幂等性可以确保生产者发送的消息具有幂等性特性，即无论发送多少次相同的消息，最终的影响都是一样的。
+      # 启用幂等性可以提供以下好处：
+      # 1、消息去重：当生产者发送重复的消息时，Kafka 会自动去重，保证只有一条消息被写入。
+      # 2、顺序保证：Kafka 会确保相同键的消息按照发送顺序进行处理，保证消息的顺序性。
+      # 3、提高可靠性：当发生网络故障或生产者重试时，启用幂等性可以确保消息不会被重复发送，避免出现重复消费的问题。
+      # 需要注意的是，启用幂等性会对性能产生一定的影响，因为 Kafka 生产者会为每个分区维护序列号和重试缓冲区。因此，在性能和可靠性之间需要进行权衡，根据具体的业务需求来决定是否启用幂等性。
+      # enable-idempotence：启用生产者的幂等性，确保消息的唯一性和顺序性。
+
+
+
+    # 指定 Kafka 服务器的地址列表，格式为 host:port，多个地址使用逗号分隔
+    bootstrap-servers: localhost:9092
+    # consumer 配置
+    consumer:
+      # 指定消费者所属的消费组的唯一标识符
+      # 在 Kafka 中，每个消费者都必须加入一个消费组（Consumer Group）才能进行消息的消费。消费组的作用在于协调多个消费者对消息的处理，以实现负载均衡和容错机制。
+      # 具体来说，spring.kafka.consumer.group-id 的作用包括以下几点：
+      #   消费者协调：Kafka 会根据 group-id 将不同的消费者分配到不同的消费组中，不同的消费组之间相互独立。消费组内的消费者协调工作由 Kafka 服务器自动完成，确保消息在消费组内得到均匀地分发。
+      #   负载均衡：当多个消费者加入同一个消费组时，Kafka 会自动对订阅的主题进行分区分配，以实现消费者之间的负载均衡。每个分区只会分配给消费组内的一个消费者进行处理，从而实现并行处理和提高整体的消息处理能力。
+      #   容错机制：在消费组内，如果某个消费者出现故障或者新的消费者加入，Kafka 会自动重新平衡分区的分配，确保各个分区的消息能够被有效地消费。
+      # 需要注意的是，同一个消费组内的消费者共享消费位移（offset），即每个分区的消息只会被消费组内的一个消费者处理。因此，同一个主题下的不同消费组是相互独立的，不会进行负载均衡和消费位移的共享。
+      group-id: gourpId.demo
+      # 指定当消费者加入一个新的消费组或者偏移量无效时的重置策略。常见的取值有 earliest（从最早的偏移量开始消费）和 latest（从最新的偏移量开始消费）
+      # auto-offset-reset 属性有以下几种取值：
+      # latest：表示从当前分区的最新位置开始消费，即只消费从启动之后生产的消息，不消费历史消息。
+      # earliest：表示从该分区的最早位置开始消费，即包含历史消息和当前的消息。
+      # none：表示如果没有找到先前的消费者偏移量，则抛出异常。
+      auto-offset-reset: earliest
+      # 指定是否开启自动提交消费位移（offset）的功能。设置为 true 则开启自动提交，设置为 false 则需要手动调用 Acknowledgment 接口的 acknowledge() 方法进行位移提交。
+      enable-auto-commit: true
+      # auto-commit-interval：当开启自动提交时，指定自动提交的间隔时间（以毫秒为单位）
+
+      # 消费者key反序列化器
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # 消费者value反序列化器
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # max-poll-records：指定每次拉取的最大记录数。用于控制每次消费者向服务器拉取数据的数量，默认为 500。
+
+# listener 配置
+# 在 Spring 中，是使用 Kafka 监听器来进行消息消费的，spring.kafka.listener用来配置监听器的相关配置，以下是一些常见的 spring.kafka.listener 相关配置及作用：
+# spring.kafka.listener.concurrency：指定监听器容器中并发消费者的数量。默认值为 1。通过设置并发消费者的数量，可以实现多个消费者同时处理消息，提高消息处理的吞吐量。
+# spring.kafka.listener.autoStartup：指定容器是否在启动时自动启动。默认值为 true。可以通过设置为 false 来在应用程序启动后手动启动容器。
+# spring.kafka.listener.clientIdPrefix：指定用于创建消费者的客户端 ID 的前缀。默认值为 “spring”.
+# spring.kafka.listener.ackMode：指定消息确认模式，包括 RECORD、BATCH 和 MANUAL_IMMEDIATE等。可根据需求选择不同的确认模式，用于控制消息的确认方式。
+# spring.kafka.listener.ackCount：当ackMode为"COUNT”或者"COUNT_TIME"时，处理多少个消息后才进行消息确认。
+# spring.kafka.listener.missing-topics-fatal：配置当消费者订阅的主题不存在时的行为
+# 当将 spring.kafka.listener.missing-topics-fatal 设置为 true 时，如果消费者订阅的主题在 Kafka 中不存在，应用程序会立即失败并抛出异常，阻止消费者启动。这意味着应用程序必须依赖于确保所有订阅的主题都存在，否则应用程序将无法正常运行。
+# 当将 spring.kafka.listener.missing-topics-fatal 设置为 false 时，如果消费者订阅的主题在 Kafka 中不存在，应用程序将继续启动并等待主题出现。一旦主题出现，消费者将开始正常地消费消息。这种情况下，应用程序需要能够处理主题缺失的情况，并在主题出现后自动适应。
+# 默认情况下，spring.kafka.listener.missing-topics-fatal 属性的值为 false，这意味着如果消费者订阅的主题不存在，应用程序将会等待主题出现而不会立刻失败。
+# spring.kafka.listener.syncCommits：指定是否在关闭容器时同步提交偏移量。默认值为 false。可以通过设置为 true 来确保在关闭容器时同步提交偏移量。
+
+    # 自定义配置Topic名称
+    topic:
+      name: TopicTest
