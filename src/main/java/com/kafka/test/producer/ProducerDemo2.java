@@ -34,6 +34,12 @@ public class ProducerDemo2 {
      */
     @RequestMapping("/send2")
     public String send2() {
+        /**
+         * 传递三个参数
+         * 第一个参数:Topic名称(主题不存在会自动创建)
+         * 第二个参数:数据的key
+         * 第三个参数:数据的value
+         */
         kafkaTemplate.send(TOPIC_NAME, "kafka-demo2", "hello:kafka-demo2");
         log.info("send2发送消息成功");
         return "send2发送消息成功";
@@ -46,6 +52,12 @@ public class ProducerDemo2 {
      */
     @RequestMapping("/send3")
     public String send3() {
+        /**
+         * 传递三个参数
+         * 第一个参数:Topic名称(主题不存在会自动创建)
+         * 第二个参数:数据的key
+         * 第三个参数:数据的value
+         */
         final ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(TOPIC_NAME, "kafka-demo2",
                 "hello:kafka-demo2同步");
         try {
@@ -55,7 +67,7 @@ public class ProducerDemo2 {
             log.info("主题:{},分区:{},偏移量:{}", recordMetadata.topic(), recordMetadata.partition(),
                     recordMetadata.offset());
         } catch (Exception e) {
-        
+            log.error("异常:{}", e.getMessage(), e);
         }
         return "同步发送消息成功";
     }
@@ -67,6 +79,12 @@ public class ProducerDemo2 {
      */
     @RequestMapping("/send4")
     public String send4() {
+        /**
+         * 传递三个参数
+         * 第一个参数:Topic名称(主题不存在会自动创建)
+         * 第二个参数:数据的key
+         * 第三个参数:数据的value
+         */
         final ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(TOPIC_NAME, "kafka-demo2",
                 "hello:kafka-demo2异步");
         try {

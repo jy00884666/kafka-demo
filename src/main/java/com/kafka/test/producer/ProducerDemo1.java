@@ -2,6 +2,7 @@ package com.kafka.test.producer;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -35,15 +36,7 @@ public class ProducerDemo1 {
     public static void main(String[] args) {
         System.out.println("kafka生产者例子");
         // 创建配置对象
-        Map<String, Object> configMap = new HashMap<>();
-        // 连接kafka主机(集群地址)
-        configMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        // 生产者数据key序列化,将键对象作为字符串进行序列化
-        configMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // 生产者数据value序列化,将键对象作为字符串进行序列化
-        configMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // 设置重试次数
-        configMap.put(ProducerConfig.RETRIES_CONFIG, 3);
+        Map<String, Object> configMap = createKafkaConfigMap();
         
         // 创建生产者对象
         // 生产者对象需要设置泛型,数据的类型约束
@@ -75,29 +68,82 @@ public class ProducerDemo1 {
     }
     
     /**
+     * 创建kafka配置对象
+     * @return
+     */
+    private static Map<String, Object> createKafkaConfigMap() {
+        Map<String, Object> configMap = new HashMap<>();
+        // 连接kafka主机(集群地址)
+        configMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        // 生产者数据key序列化,将键对象作为字符串进行序列化
+        configMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        // 生产者数据value序列化,将键对象作为字符串进行序列化
+        configMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        // 设置重试次数
+        configMap.put(ProducerConfig.RETRIES_CONFIG, 3);
+        return configMap;
+    }
+    
+    /**
      * 使用Kafka的AdminClient API来创建Topic (同步)
      */
     public void createTopic1() {
         // 创建配置对象
-        Map<String, Object> configMap = new HashMap<>();
-        // 连接kafka主机(集群地址)
-        configMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        // 生产者数据key序列化
-        configMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // 生产者数据value序列化
-        configMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // 设置重试次数
-        configMap.put(ProducerConfig.RETRIES_CONFIG, 3);
+        Map<String, Object> configMap = createKafkaConfigMap();
         
-        // 使用Kafka的AdminClient API来创建Topic (同步)
+        // 使用Kafka的管理员对象 AdminClient API来创建Topic (同步)
         AdminClient adminClient = AdminClient.create(configMap);
-        // 创建了一个名为"TopicTest"的topic，它有一个分区，一个副本因子，并且指定了连接到的kafka broker
+        /**参数解析:
+         * 参数1:主题名称(可以是字母,数字,点,下划线,中横线),kafka担心主题名称与内部监控指标的名称重复,所以不推荐点和下划线同时使用
+         * 参数2:分区数量 int
+         * 参数3:主题分区副本因子数量 short
+         * 创建了一个名为"TopicTest"的topic，它有一个分区，一个副本因子，并且指定了连接到的kafka broker
+         */
         NewTopic topic = new NewTopic("TopicTest", 1, (short) 1);
         try {
-            // 创建主题,调用.all()方法来等待所有主题被创建
-            KafkaFuture<Void> createTopicFuture = adminClient.createTopics(Collections.singleton(topic)).all();
+            // 创建主题,调用.all()方法来创建所有主题
+            CreateTopicsResult result = adminClient.createTopics(Collections.singleton(topic));
+            KafkaFuture<Void> createTopicFuture = result.all();
+            // get()方法阻塞等待操作完成
+            createTopicFuture.get();
         } catch (Exception e) {
-            log.error("创建Topic异常", e);
+            log.error("同步创建Topic异常", e);
+        } finally {
+            // 关闭连接
+            adminClient.close();
+        }
+    }
+    
+    /**
+     * 使用Kafka的AdminClient API来创建Topic (异步)
+     */
+    public void createTopic2() {
+        // 创建配置对象
+        Map<String, Object> configMap = createKafkaConfigMap();
+        
+        // 使用Kafka的管理员对象 AdminClient API来创建Topic (异步)
+        AdminClient adminClient = AdminClient.create(configMap);
+        /**参数解析:
+         * 参数1:主题名称(可以是字母,数字,点,下划线,中横线),kafka担心主题名称与内部监控指标的名称重复,所以不推荐点和下划线同时使用
+         * 参数2:分区数量 int
+         * 参数3:主题分区副本因子数量 short
+         * 创建了一个名为"TopicTest"的topic，它有一个分区，一个副本因子，并且指定了连接到的kafka broker
+         */
+        NewTopic topic = new NewTopic("TopicTest", 1, (short) 1);
+        try {
+            // 创建主题,调用.all()方法来创建所有主题
+            CreateTopicsResult result = adminClient.createTopics(Collections.singleton(topic));
+            KafkaFuture<Void> createTopicFuture = result.all();
+            // 后置处理器异步操作完成
+            createTopicFuture.whenComplete((unused, throwable) -> {
+                if (throwable != null) {
+                    log.error("主题Topic创建异常:{} ", throwable);
+                } else {
+                    log.info("异步创建Topic成功:{}", unused);
+                }
+            });
+        } catch (Exception e) {
+            log.error("异步创建Topic异常", e);
         } finally {
             // 关闭连接
             adminClient.close();
