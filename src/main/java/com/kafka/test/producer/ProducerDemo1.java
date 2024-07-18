@@ -4,9 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.serialization.StringSerializer;
 
@@ -35,6 +37,20 @@ public class ProducerDemo1 {
     
     public static void main(String[] args) {
         System.out.println("kafka生产者例子");
+        // 发送消息
+        //createTopic0();
+        // 创建Topic同步
+        //createTopic1();
+        // 创建Topic异步
+        //createTopic2();
+        // 异步发送消息
+        createTopic3();
+    }
+    
+    /**
+     * 简单生产者例子,无返回值
+     */
+    public static void createTopic0() {
         // 创建配置对象
         Map<String, Object> configMap = createKafkaConfigMap();
         
@@ -81,13 +97,15 @@ public class ProducerDemo1 {
         configMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         // 设置重试次数
         configMap.put(ProducerConfig.RETRIES_CONFIG, 3);
+        // 生产者发送消息的确认模式。可选的值有 “0”（不需要任何确认）、“1”（只需要 Leader 确认）和 “all”（需要 Leader 和所有副本确认）
+        configMap.put(ProducerConfig.ACKS_CONFIG, "all");
         return configMap;
     }
     
     /**
      * 使用Kafka的AdminClient API来创建Topic (同步)
      */
-    public void createTopic1() {
+    public static void createTopic1() {
         // 创建配置对象
         Map<String, Object> configMap = createKafkaConfigMap();
         
@@ -117,7 +135,7 @@ public class ProducerDemo1 {
     /**
      * 使用Kafka的AdminClient API来创建Topic (异步)
      */
-    public void createTopic2() {
+    public static void createTopic2() {
         // 创建配置对象
         Map<String, Object> configMap = createKafkaConfigMap();
         
@@ -150,4 +168,53 @@ public class ProducerDemo1 {
         }
     }
     
+    /**
+     * 通过异步回调的方式发送消息
+     */
+    public static void createTopic3() {
+        // 创建配置对象
+        Map<String, Object> configMap = createKafkaConfigMap();
+        
+        // 创建生产者对象
+        // 生产者对象需要设置泛型,数据的类型约束
+        KafkaProducer<String, String> producer = new KafkaProducer<String, String>(configMap);
+        
+        // 创建数据
+        /**
+         * 构建数据需要传递三个参数
+         * 第一个参数:Topic名称(主题不存在会自动创建)
+         * 第二个参数:数据的key
+         * 第三个参数:数据的value
+         */
+        ProducerRecord<String, String> record = new ProducerRecord<String, String>(
+                "TopicTest", "kafka-demo1", "hello,kafka!"
+        );
+        
+        // 通过异步回调的方式发送消息
+        try {
+            producer.send(record, new Callback() {
+                /**
+                 * 该接口中表示kafka服务器响应给客户端,会自动调用 onCompletion 方法
+                 * metadata:消息的源数据(属于哪个Topic,属于哪个Partition,对应的偏移量是什么)
+                 * exception:封装kafka消息出现的异常,如果为null表示发送成功
+                 */
+                @Override
+                public void onCompletion(RecordMetadata metadata, Exception exception) {
+                    // 消息发送成功或失败
+                    if (exception == null) {
+                        log.info("异步发送成功:Topic:{},分区id:{},偏移量:{}", metadata.topic(), metadata.partition(),
+                                metadata.offset());
+                    } else {
+                        log.error("异步发送异常:", exception);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.error("发送消息异常", e);
+        } finally {
+            // 关闭生产者对象
+            producer.close();
+        }
+        
+    }
 }

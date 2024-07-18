@@ -14,6 +14,7 @@ spring:
       # 生产者数据value序列化
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       # acks：生产者发送消息的确认模式。可选的值有 “0”（不需要任何确认）、“1”（只需要 Leader 确认）和 “all”（需要 Leader 和所有副本确认）
+      acks: all
       # retries：配置生产者在发生错误时的重试次数。
       # retry-backoff-ms：配置重试之间的延迟时间（默认为 100 毫秒）。重试的间隔时间会随着重试次数的增加而指数级增长，以避免过度负载和大量的重复请求。
       # batch-size：配置每个批次中包含的消息大小。当应用程序使用 Kafka 生产者发送消息时，发送单个消息可能会带来一些性能开销。为了减少这种开销，可以将多个消息进行批量发送。spring.kafka.producer.batch-size 参数就是用来指定每个批次中包含的消息大小。
@@ -27,6 +28,7 @@ spring:
       # 3、提高可靠性：当发生网络故障或生产者重试时，启用幂等性可以确保消息不会被重复发送，避免出现重复消费的问题。
       # 需要注意的是，启用幂等性会对性能产生一定的影响，因为 Kafka 生产者会为每个分区维护序列号和重试缓冲区。因此，在性能和可靠性之间需要进行权衡，根据具体的业务需求来决定是否启用幂等性。
       # enable-idempotence：启用生产者的幂等性，确保消息的唯一性和顺序性。
+
 
 
 
@@ -47,18 +49,19 @@ spring:
       # latest：表示从当前分区的最新位置开始消费，即只消费从启动之后生产的消息，不消费历史消息。
       # earliest：表示从该分区的最早位置开始消费，即包含历史消息和当前的消息。
       # none：表示如果没有找到先前的消费者偏移量，则抛出异常。
-      auto-offset-reset: earliest
+      auto-offset-reset: latest
       # 指定是否开启自动提交消费位移（offset）的功能。设置为 true 则开启自动提交，设置为 false 则需要手动调用 Acknowledgment 接口的 acknowledge() 方法进行位移提交。
       enable-auto-commit: true
-      # auto-commit-interval：当开启自动提交时，指定自动提交的间隔时间（以毫秒为单位）
-
+      # auto-commit-interval：当开启自动提交时，指定自动提交的间隔时间（以毫秒为单位）,默认值为 5000 毫秒,也就是 5 秒
+      auto-commit-interval: 1000
       # 消费者key反序列化器
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       # 消费者value反序列化器
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       # max-poll-records：指定每次拉取的最大记录数。用于控制每次消费者向服务器拉取数据的数量，默认为 500。
 
-# listener 配置
+
+    # listener 配置
 # 在 Spring 中，是使用 Kafka 监听器来进行消息消费的，spring.kafka.listener用来配置监听器的相关配置，以下是一些常见的 spring.kafka.listener 相关配置及作用：
 # spring.kafka.listener.concurrency：指定监听器容器中并发消费者的数量。默认值为 1。通过设置并发消费者的数量，可以实现多个消费者同时处理消息，提高消息处理的吞吐量。
 # spring.kafka.listener.autoStartup：指定容器是否在启动时自动启动。默认值为 true。可以通过设置为 false 来在应用程序启动后手动启动容器。

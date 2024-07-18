@@ -15,7 +15,7 @@
     </properties>
     
     <dependencies>
-        <!-- kafka -->
+        <!-- kafka客户端工具 -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
