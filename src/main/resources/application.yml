@@ -15,6 +15,8 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       # acks：生产者发送消息的确认模式。可选的值有 “0”（不需要任何确认）、“1”（只需要 Leader 确认）和 “all”（需要 Leader 和所有副本确认）
       acks: all
+      # 当需要使用事务发送消息是开启事务前缀,值随意写,需要配置监听类型spring.kafka.listener.type否则会报错,注意:在添加transaction-id-prefix后，所有的发送方必须强制添加事务。否则会报错无法启动
+      #transaction-id-prefix: kafka_rollback.
       # retries：配置生产者在发生错误时的重试次数。
       # retry-backoff-ms：配置重试之间的延迟时间（默认为 100 毫秒）。重试的间隔时间会随着重试次数的增加而指数级增长，以避免过度负载和大量的重复请求。
       # batch-size：配置每个批次中包含的消息大小。当应用程序使用 Kafka 生产者发送消息时，发送单个消息可能会带来一些性能开销。为了减少这种开销，可以将多个消息进行批量发送。spring.kafka.producer.batch-size 参数就是用来指定每个批次中包含的消息大小。
@@ -28,6 +30,7 @@ spring:
       # 3、提高可靠性：当发生网络故障或生产者重试时，启用幂等性可以确保消息不会被重复发送，避免出现重复消费的问题。
       # 需要注意的是，启用幂等性会对性能产生一定的影响，因为 Kafka 生产者会为每个分区维护序列号和重试缓冲区。因此，在性能和可靠性之间需要进行权衡，根据具体的业务需求来决定是否启用幂等性。
       # enable-idempotence：启用生产者的幂等性，确保消息的唯一性和顺序性。
+
 
 
 
@@ -62,17 +65,29 @@ spring:
 
 
     # listener 配置
-# 在 Spring 中，是使用 Kafka 监听器来进行消息消费的，spring.kafka.listener用来配置监听器的相关配置，以下是一些常见的 spring.kafka.listener 相关配置及作用：
-# spring.kafka.listener.concurrency：指定监听器容器中并发消费者的数量。默认值为 1。通过设置并发消费者的数量，可以实现多个消费者同时处理消息，提高消息处理的吞吐量。
-# spring.kafka.listener.autoStartup：指定容器是否在启动时自动启动。默认值为 true。可以通过设置为 false 来在应用程序启动后手动启动容器。
-# spring.kafka.listener.clientIdPrefix：指定用于创建消费者的客户端 ID 的前缀。默认值为 “spring”.
-# spring.kafka.listener.ackMode：指定消息确认模式，包括 RECORD、BATCH 和 MANUAL_IMMEDIATE等。可根据需求选择不同的确认模式，用于控制消息的确认方式。
-# spring.kafka.listener.ackCount：当ackMode为"COUNT”或者"COUNT_TIME"时，处理多少个消息后才进行消息确认。
-# spring.kafka.listener.missing-topics-fatal：配置当消费者订阅的主题不存在时的行为
-# 当将 spring.kafka.listener.missing-topics-fatal 设置为 true 时，如果消费者订阅的主题在 Kafka 中不存在，应用程序会立即失败并抛出异常，阻止消费者启动。这意味着应用程序必须依赖于确保所有订阅的主题都存在，否则应用程序将无法正常运行。
-# 当将 spring.kafka.listener.missing-topics-fatal 设置为 false 时，如果消费者订阅的主题在 Kafka 中不存在，应用程序将继续启动并等待主题出现。一旦主题出现，消费者将开始正常地消费消息。这种情况下，应用程序需要能够处理主题缺失的情况，并在主题出现后自动适应。
-# 默认情况下，spring.kafka.listener.missing-topics-fatal 属性的值为 false，这意味着如果消费者订阅的主题不存在，应用程序将会等待主题出现而不会立刻失败。
-# spring.kafka.listener.syncCommits：指定是否在关闭容器时同步提交偏移量。默认值为 false。可以通过设置为 true 来确保在关闭容器时同步提交偏移量。
+    # 在 Spring 中，是使用 Kafka 监听器来进行消息消费的，spring.kafka.listener用来配置监听器的相关配置，以下是一些常见的 spring.kafka.listener 相关配置及作用：
+    listener:
+      # 消费消息的模式分为2种模式（对应spring.kafka.listener.type配置）：single 每次消费单条记录 , batch 批量消费消息列表
+      type: single
+      # 当auto.commit.enable设置为false时，表示kafak的offset由customer手动维护，spring-kafka提供了通过ackMode的值表示不同的手动提交方式；
+      # RECORD   当每一条记录被消费者监听器（ListenerConsumer）处理之后提交
+      # BATCH   当每一批poll()的数据被消费者监听器（ListenerConsumer）处理之后提交
+      # TIME   当每一批poll()的数据被消费者监听器（ListenerConsumer）处理之后，距离上次提交时间大于TIME时提交
+      # COUNT   当每一批poll()的数据被消费者监听器（ListenerConsumer）处理之后，被处理record数量大于等于COUNT时提交
+      # COUNT_TIME   上述 TIM 或 COUNT 有一个条件满足时提交
+      # MANUAL    当每一批poll()的数据被消费者监听器（ListenerConsumer）处理之后, 手动调用Acknowledgment.acknowledge()后提交
+      # MANUAL_IMMEDIATE    手动调用Acknowledgment.acknowledge()后立即提交
+      ack-mode: RECORD
+      # spring.kafka.listener.concurrency：指定监听器容器中并发消费者的数量。默认值为 1。通过设置并发消费者的数量，可以实现多个消费者同时处理消息，提高消息处理的吞吐量。
+      # spring.kafka.listener.autoStartup：指定容器是否在启动时自动启动。默认值为 true。可以通过设置为 false 来在应用程序启动后手动启动容器。
+      # spring.kafka.listener.clientIdPrefix：指定用于创建消费者的客户端 ID 的前缀。默认值为 “spring”.
+      # spring.kafka.listener.ackMode：指定消息确认模式，包括 RECORD、BATCH 和 MANUAL_IMMEDIATE等。可根据需求选择不同的确认模式，用于控制消息的确认方式。
+      # spring.kafka.listener.ackCount：当ackMode为"COUNT”或者"COUNT_TIME"时，处理多少个消息后才进行消息确认。
+      # spring.kafka.listener.missing-topics-fatal：配置当消费者订阅的主题不存在时的行为
+      # 当将 spring.kafka.listener.missing-topics-fatal 设置为 true 时，如果消费者订阅的主题在 Kafka 中不存在，应用程序会立即失败并抛出异常，阻止消费者启动。这意味着应用程序必须依赖于确保所有订阅的主题都存在，否则应用程序将无法正常运行。
+      # 当将 spring.kafka.listener.missing-topics-fatal 设置为 false 时，如果消费者订阅的主题在 Kafka 中不存在，应用程序将继续启动并等待主题出现。一旦主题出现，消费者将开始正常地消费消息。这种情况下，应用程序需要能够处理主题缺失的情况，并在主题出现后自动适应。
+      # 默认情况下，spring.kafka.listener.missing-topics-fatal 属性的值为 false，这意味着如果消费者订阅的主题不存在，应用程序将会等待主题出现而不会立刻失败。
+      # spring.kafka.listener.syncCommits：指定是否在关闭容器时同步提交偏移量。默认值为 false。可以通过设置为 true 来确保在关闭容器时同步提交偏移量。
 
     # 自定义配置Topic名称
     topic:

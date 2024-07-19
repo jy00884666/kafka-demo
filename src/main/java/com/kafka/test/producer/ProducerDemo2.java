@@ -6,13 +6,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 注解-消息生产者
+ * springboot整合-消息生产者
+ * 需要关闭事务消息发送,注释如下配置,如果想使用事务消息在添加transaction-id-prefix后，所有的发送方必须强制添加事务。否则会报错无法启动
+ * spring.kafka.producer.transaction-id-prefix:
  */
 @Slf4j
 @RestController

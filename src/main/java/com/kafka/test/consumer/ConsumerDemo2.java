@@ -15,8 +15,11 @@ import java.util.Optional;
 public class ConsumerDemo2 {
     
     /**
-     * 监听器{topics:监听主题}
-     * @param record
+     * 消息的消费,监听器{topics:监听主题}
+     * 配置@KafkaListener(id="", 唯一标识,id可以为空
+     * --                 topics = {""}, 主题集合,可以是多个主题
+     * --                 groupId = "" 消费者组id,yml中已经配置全局的了,这里可以单独设置
+     * --                 )
      */
     @KafkaListener(topics = {"${spring.kafka.topic.name}"})
     public void listener(ConsumerRecord record) {
